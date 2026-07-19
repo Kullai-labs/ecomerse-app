@@ -19,6 +19,7 @@ model User {
   phone        String?
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
+
   vendor          Vendor?
   addresses       Address[]
   cartItems       CartItem[]
@@ -26,6 +27,7 @@ model User {
   reviews         Review[]
   wishlists       Wishlist[]
   notifications   Notification[]
+
   @@map("users")
 }
 
@@ -39,18 +41,20 @@ model Vendor {
   bankAccount     String?  @map("bank_account")
   bankIfsc        String?  @map("bank_ifsc")
   logo            String?
-  status          String   @default("pending")
-  commissionRate  Float    @default(5.0)
+  status          String   @default("pending") // pending | approved | rejected | suspended
+  commissionRate  Float    @default(5.0) // platform commission %
   rating          Float    @default(0)
   totalSales      Int      @default(0)
   rejectionReason String?  @map("rejection_reason")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+
   user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   products        Product[]
   orderItems      OrderItem[]
   payouts         Payout[]
   coupons         Coupon[]
+
   @@map("vendors")
 }
 
@@ -65,6 +69,7 @@ model Category {
   children  Category[] @relation("CategoryTree")
   products  Product[]
   createdAt DateTime @default(now()) @map("created_at")
+
   @@map("categories")
 }
 
@@ -80,13 +85,14 @@ model Product {
   stock       Int      @default(0)
   sku         String?
   weight      Float?
-  status      String   @default("active")
+  status      String   @default("active") // active | draft | archived | out_of_stock
   rating      Float    @default(0)
   reviewCount Int      @default(0) @map("review_count")
   salesCount  Int      @default(0) @map("sales_count")
-  tags        String?
+  tags        String?  // JSON array of tags
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+
   vendor        Vendor       @relation(fields: [vendorId], references: [id], onDelete: Cascade)
   category      Category     @relation(fields: [categoryId], references: [id])
   images        ProductImage[]
@@ -95,6 +101,7 @@ model Product {
   orderItems    OrderItem[]
   reviews       Review[]
   wishlists     Wishlist[]
+
   @@map("products")
 }
 
@@ -105,20 +112,24 @@ model ProductImage {
   alt       String?
   position  Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
+
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@map("product_images")
 }
 
 model ProductVariant {
   id        String   @id @default(cuid())
   productId String   @map("product_id")
-  name      String
+  name      String   // e.g. "Red / XL"
   sku       String?
   price     Float
   stock     Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
+
   product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
   cartItems  CartItem[]
+
   @@map("product_variants")
 }
 
@@ -135,8 +146,10 @@ model Address {
   phone     String?
   isDefault Boolean  @default(false) @map("is_default")
   createdAt DateTime @default(now()) @map("created_at")
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   orders  Order[]
+
   @@map("addresses")
 }
 
@@ -148,9 +161,11 @@ model CartItem {
   quantity   Int             @default(1)
   createdAt  DateTime        @default(now()) @map("created_at")
   updatedAt  DateTime        @updatedAt @map("updated_at")
+
   user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   product  Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
   variant  ProductVariant?  @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
   @@map("cart_items")
 }
 
@@ -159,8 +174,8 @@ model Order {
   orderNumber   String   @unique @map("order_number")
   buyerId       String   @map("buyer_id")
   addressId     String?  @map("address_id")
-  status        String   @default("placed")
-  paymentStatus String   @default("pending") @map("payment_status")
+  status        String   @default("placed") // placed | confirmed | shipped | out_for_delivery | delivered | cancelled | returned
+  paymentStatus String   @default("pending") @map("payment_status") // pending | paid | failed | refunded
   paymentMethod String?  @map("payment_method")
   subtotal      Float
   tax           Float    @default(0)
@@ -174,11 +189,13 @@ model Order {
   cancelledAt   DateTime? @map("cancelled_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
+
   buyer      User         @relation("BuyerOrders", fields: [buyerId], references: [id])
   address    Address?     @relation(fields: [addressId], references: [id])
   items      OrderItem[]
   invoices   Invoice[]
   tracking   Tracking?
+
   @@map("orders")
 }
 
@@ -194,11 +211,13 @@ model OrderItem {
   quantity  Int
   tax       Float    @default(0)
   total     Float
-  status    String   @default("placed")
+  status    String   @default("placed") // placed | confirmed | shipped | delivered | cancelled | returned
   createdAt DateTime @default(now()) @map("created_at")
+
   order    Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
   vendor   Vendor          @relation(fields: [vendorId], references: [id])
   product  Product         @relation(fields: [productId], references: [id])
+
   @@map("order_items")
 }
 
@@ -211,7 +230,9 @@ model Tracking {
   estimatedDelivery DateTime? @map("estimated_delivery")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
+
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   @@map("tracking")
 }
 
@@ -231,7 +252,9 @@ model Invoice {
   buyerEmail   String   @map("buyer_email")
   buyerGstin   String?  @map("buyer_gstin")
   createdAt    DateTime @default(now()) @map("created_at")
+
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
   @@map("invoices")
 }
 
@@ -243,8 +266,10 @@ model Review {
   title     String?
   comment   String?
   createdAt DateTime @default(now()) @map("created_at")
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@unique([userId, productId])
   @@map("reviews")
 }
@@ -253,17 +278,19 @@ model Coupon {
   id            String   @id @default(cuid())
   code          String   @unique
   description   String?
-  discountType  String   @map("discount_type")
+  discountType  String   @map("discount_type") // percentage | fixed
   discountValue Float    @map("discount_value")
   minOrder      Float    @default(0) @map("min_order")
   maxDiscount   Float?   @map("max_discount")
-  vendorId      String?  @map("vendor_id")
+  vendorId      String?  @map("vendor_id") // null = platform-wide
   usageLimit    Int?     @map("usage_limit")
   usageCount    Int      @default(0) @map("usage_count")
   active        Boolean  @default(true)
   expiresAt     DateTime? @map("expires_at")
   createdAt     DateTime @default(now()) @map("created_at")
+
   vendor  Vendor? @relation(fields: [vendorId], references: [id])
+
   @@map("coupons")
 }
 
@@ -272,8 +299,10 @@ model Wishlist {
   userId    String   @map("user_id")
   productId String   @map("product_id")
   createdAt DateTime @default(now()) @map("created_at")
+
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
   @@unique([userId, productId])
   @@map("wishlists")
 }
@@ -283,11 +312,13 @@ model Notification {
   userId    String   @map("user_id")
   title     String
   message   String
-  type      String
+  type      String   // order | promo | system | vendor
   read      Boolean  @default(false)
-  data      String?
+  data      String?  // JSON for extra data
   createdAt DateTime @default(now()) @map("created_at")
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   @@map("notifications")
 }
 
@@ -295,9 +326,11 @@ model Payout {
   id        String   @id @default(cuid())
   vendorId  String   @map("vendor_id")
   amount    Float
-  status    String   @default("pending")
+  status    String   @default("pending") // pending | processing | completed | failed
   reference String?
   createdAt DateTime @default(now()) @map("created_at")
+
   vendor Vendor @relation(fields: [vendorId], references: [id])
+
   @@map("payouts")
 }
